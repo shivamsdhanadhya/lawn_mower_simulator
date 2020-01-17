@@ -1,8 +1,8 @@
 # Lawn-mower Simulator
 
 ### Description:
-The goal of this project was to learn the Software Architecture and Designing principles and to implement a simulation system for autmatic lawn mower.
-This project was completed as a group project, with my contribution in python backend and designing of the system.
+The goal of this project was to learn the Software Architecture and Designing principles and to implement a simulation system for an automatic lawnmower.
+This project was completed as a group project, with my contribution to python backend and designing of the system.
 
 ### System Requirements:
 * Multiple Lawnmowers working collaboratively in one lawn
