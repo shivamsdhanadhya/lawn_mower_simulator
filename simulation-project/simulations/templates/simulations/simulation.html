@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+    <style>
+        .square {
+            width: 100px;
+            height: 100px;
+            /* background-color: lightgreen; */
+            background-image: url("/static/images/dirt.JPG");
+            background-size: contain;
+            border: 1px solid black;
+            display: inline-block;
+        }
+
+        .row {
+            display: block;
+            height: 100px;
+        }
+
+        .mower {
+            /* background-color: red; */
+            background-image: url("/static/images/mower.JPG");
+            background-size: contain;
+        }
+
+        .puppy {
+            /* background-color: brown; */
+            background-image: url("/static/images/puppy.JPG");
+            background-size: contain;
+        }
+
+        .crater {
+            /* background-color: darkslategrey; */
+            background-image: url("/static/images/crater.JPG");
+            background-size: contain;
+        }
+
+        .mower.puppy {
+            /* background-color: yellow; */
+            background-image: url("/static/images/puppy_mower.JPG");
+            background-size: contain;
+        }
+
+        .grass {
+            /* background-color: green; */
+            background-image: url("/static/images/grass.JPG");
+            background-size: contain;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+    </style>
+
+    <div style="float: left;">
+        <button id="next">Next Move</button>
+
+        <button id="restart">Restart</button>
+
+        <button id="fast-forward">Fast Forward</button>
+
+        <button id="stop">Stop</button>
+
+        <span id="cut"></span>
+        <span id="remaining"></span>
+        <span id="turn"></span>
+
+        <form method="POST" action="/uploadFile/" enctype="multipart/form-data" id="upload-file-form">
+            {% csrf_token %}
+            <input id="file" type="file" name="file" />
+        </form>
+
+        <div id="grid">
+    
+        </div>
+    </div>
+
+    <div id="output" style="width: 300px; height: 500px; overflow: scroll; position: relative; left: 20px;">
+
+    </div>
+
+<script src="/static/scripts/jquery.min.js"></script>
+<script>
+
+    (function () {
+        'use strict';
+
+        $.get('/getInfo', function (response) {
+            
+            updateGrid(response);
+
+        });
+
+        $('#next').on('click', function () {
+            $.get('/nextMove', function (response) {
+                updateGrid(response);
+            });
+        });
+
+        $('#restart').on('click', function () {
+            $.get('/restart', function () {
+                window.location.reload();
+            });
+        });
+
+        $('#fast-forward').on('click', function () {
+            $.get('/fastForward', function (response) {
+                addOutputMessage("Fast forwarding...");
+                updateGrid(response);
+            });
+        });
+
+        $('#stop').on('click', function () {
+            $.get('/stop', function () {
+                stopped();
+            });
+        });
+
+        $('#file').on('change', function () {
+            $('#upload-file-form').submit();
+        });
+
+        function updateGrid(response) {
+            console.log(response);
+
+            if (response.polled_object) {
+                addOutputMessage("Turn " + response.summary.turns_taken_so_far + ": Polled " + response.polled_object);
+            }
+
+            drawGrid(response);
+
+            drawGrass(response);
+            drawCraters(response);
+            drawMowers(response);
+            drawPuppies(response);
+
+            updateSummary(response);
+
+            if (response.stopped === true) {
+                stopped();
+            }
+        }
+
+        function addOutputMessage(message) {
+            $('#output').append("<p>" + message + "</p>")
+            $('#output').scrollTop($('#output').prop('scrollHeight'));
+        }
+
+        function stopped() {
+            console.log("stopped");
+            $('#next').attr('disabled', 'disabled');
+            $('#fast-forward').attr('disabled', 'disabled');
+            $('#stop').attr('disabled', 'disabled');
+            addOutputMessage("The simulation has ended. Please click \"Restart\" to continue, or upload a new file.");
+        }
+
+        function drawGrass(response) {
+
+            for (var i = 0; i < response.grass_locations.length; i++) {
+                var location = response.grass_locations[i];
+
+                $('#' + location[0] + '-' + location[1]).addClass('grass');
+            }
+        }
+
+        function drawCraters(response) {
+            for (var i = 0; i < response.crater_locations.length; i++) {
+                var location = response.crater_locations[i];
+
+                $('#' + location[0] + '-' + location[1]).removeClass('grass').addClass('crater');
+            }
+        }
+
+        function drawMowers(response) {
+
+            for (var property in response.lawnmower_location_dir) {
+
+                if (response.lawnmower_location_dir.hasOwnProperty(property)) {
+                    
+                    var location = response.lawnmower_location_dir[property][0];
+                    var direction = response.lawnmower_location_dir[property][1];
+
+                    $('#' + location[0] + '-' + location[1]).removeClass('grass').addClass('mower');
+                }
+            }
+        }
+
+        function drawPuppies(response) {
+
+            for (var property in response.puppy_location_dir) {
+                if (response.puppy_location_dir.hasOwnProperty(property)) {
+                    
+                    var location = response.puppy_location_dir[property].location;
+
+                    $('#' + location[0] + '-' + location[1]).removeClass('grass').addClass('puppy');
+                }
+            }
+        }
+
+        function updateSummary(response) {
+            $('#cut').html("Cut: " + response.summary.squares_cut_so_far + " - ");
+            $('#remaining').html("Remaining: " + response.summary.squares_remaining + " - ");
+            $('#turn').html("Turn: " + response.summary.turns_taken_so_far);
+        }
+
+        function drawGrid(response) {
+            var rows = [];
+
+            for (var i = 0; i < response.lawn_height; i++) {
+
+                var row = $('<div></div>');
+                row.addClass('row');
+
+                for (var j = 0; j < response.lawn_width; j++) {
+
+                    var square = $('<span></span>');
+                    square.addClass('square');
+
+                    square.attr('id', j + '-' + i);
+                    row.append(square);
+
+                }
+
+                rows.unshift(row);
+            }
+
+            $('#grid').empty();
+
+            for (var i = 0; i < rows.length; i++) {
+                $('#grid').append(rows[i]);
+            }
+        }
+        
+
+    })();
+
+</script>
